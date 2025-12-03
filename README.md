@@ -6,21 +6,21 @@ Bug fixes will still be merged (slowly). Bug reports are welcome, but I will not
 # Squirrel - fluent SQL generator for Go
 
 ```go
-import "github.com/Masterminds/squirrel"
+import "github.com/rainforestpay/squirrel"
 ```
 
 
-[![GoDoc](https://godoc.org/github.com/Masterminds/squirrel?status.png)](https://godoc.org/github.com/Masterminds/squirrel)
+[![GoDoc](https://godoc.org/github.com/rainforestpay/squirrel?status.png)](https://godoc.org/github.com/rainforestpay/squirrel)
 [![Build Status](https://api.travis-ci.org/Masterminds/squirrel.svg?branch=master)](https://travis-ci.org/Masterminds/squirrel)
 
 **Squirrel is not an ORM.** For an application of Squirrel, check out
-[structable, a table-struct mapper](https://github.com/Masterminds/structable)
+[structable, a table-struct mapper](https://github.com/rainforestpay/structable)
 
 
 Squirrel helps you build SQL queries from composable parts:
 
 ```go
-import sq "github.com/Masterminds/squirrel"
+import sq "github.com/rainforestpay/squirrel"
 
 users := sq.Select("*").From("users").Join("emails USING (email_id)")
 

@@ -34,7 +34,16 @@ func (c CTE) ToSql() (string, []interface{}, error) {
 	}
 
 	buf.WriteString(" AS (")
-	sql, args, err := c.Expression.ToSql()
+	var (
+		sql string
+		args []interface{}
+		err error
+	)
+	if rawExpr, ok := c.Expression.(rawSqlizer); ok {
+		sql, args, err = rawExpr.toSqlRaw()
+	} else {
+		sql, args, err = c.Expression.ToSql()
+	}
 	if err != nil {
 		return "", []interface{}{}, err
 	}
