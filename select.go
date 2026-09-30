@@ -24,8 +24,8 @@ type selectData struct {
 	GroupBys          []string
 	HavingParts       []Sqlizer
 	OrderByParts      []Sqlizer
-	Limit             string
-	Offset            string
+	Limit             Sqlizer
+	Offset            Sqlizer
 	Suffixes          []Sqlizer
 }
 
@@ -165,14 +165,20 @@ func (d *selectData) toSqlRaw() (sqlStr string, args []interface{}, err error) {
 		}
 	}
 
-	if len(d.Limit) > 0 {
+	if d.Limit != nil {
 		sql.WriteString(" LIMIT ")
-		sql.WriteString(d.Limit)
+		args, err = appendToSql([]Sqlizer{d.Limit}, sql, "", args)
+		if err != nil {
+			return
+		}
 	}
 
-	if len(d.Offset) > 0 {
+	if d.Offset != nil {
 		sql.WriteString(" OFFSET ")
-		sql.WriteString(d.Offset)
+		args, err = appendToSql([]Sqlizer{d.Offset}, sql, "", args)
+		if err != nil {
+			return
+		}
 	}
 
 	if len(d.Suffixes) > 0 {
@@ -440,9 +446,10 @@ func (b SelectBuilder) OrderBy(orderBys ...string) SelectBuilder {
 	return b
 }
 
-// Limit sets a LIMIT clause on the query.
+// Limit sets a LIMIT clause on the query. The value is bound as a placeholder argument so queries
+// that differ only in limit share one SQL string.
 func (b SelectBuilder) Limit(limit uint64) SelectBuilder {
-	return builder.Set(b, "Limit", fmt.Sprintf("%d", limit)).(SelectBuilder)
+	return builder.Set(b, "Limit", Expr("?", limit)).(SelectBuilder)
 }
 
 // Limit ALL allows to access all records with limit
@@ -450,9 +457,10 @@ func (b SelectBuilder) RemoveLimit() SelectBuilder {
 	return builder.Delete(b, "Limit").(SelectBuilder)
 }
 
-// Offset sets a OFFSET clause on the query.
+// Offset sets a OFFSET clause on the query. The value is bound as a placeholder argument so queries
+// that differ only in offset share one SQL string.
 func (b SelectBuilder) Offset(offset uint64) SelectBuilder {
-	return builder.Set(b, "Offset", fmt.Sprintf("%d", offset)).(SelectBuilder)
+	return builder.Set(b, "Offset", Expr("?", offset)).(SelectBuilder)
 }
 
 // RemoveOffset removes OFFSET clause.
