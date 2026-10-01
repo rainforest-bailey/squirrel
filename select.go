@@ -446,9 +446,14 @@ func (b SelectBuilder) OrderBy(orderBys ...string) SelectBuilder {
 	return b
 }
 
-// Limit sets a LIMIT clause on the query. The value is bound as a placeholder argument so queries
-// that differ only in limit share one SQL string.
+// Limit sets a LIMIT clause on the query. The value is written into the SQL text.
 func (b SelectBuilder) Limit(limit uint64) SelectBuilder {
+	return builder.Set(b, "Limit", Expr(fmt.Sprintf("%d", limit))).(SelectBuilder)
+}
+
+// LimitParam sets a LIMIT clause on the query with the value bound as a placeholder argument, so
+// queries that differ only in limit share one SQL string.
+func (b SelectBuilder) LimitParam(limit uint64) SelectBuilder {
 	return builder.Set(b, "Limit", Expr("?", limit)).(SelectBuilder)
 }
 
@@ -457,9 +462,14 @@ func (b SelectBuilder) RemoveLimit() SelectBuilder {
 	return builder.Delete(b, "Limit").(SelectBuilder)
 }
 
-// Offset sets a OFFSET clause on the query. The value is bound as a placeholder argument so queries
-// that differ only in offset share one SQL string.
+// Offset sets a OFFSET clause on the query. The value is written into the SQL text.
 func (b SelectBuilder) Offset(offset uint64) SelectBuilder {
+	return builder.Set(b, "Offset", Expr(fmt.Sprintf("%d", offset))).(SelectBuilder)
+}
+
+// OffsetParam sets an OFFSET clause on the query with the value bound as a placeholder argument, so
+// queries that differ only in offset share one SQL string.
+func (b SelectBuilder) OffsetParam(offset uint64) SelectBuilder {
 	return builder.Set(b, "Offset", Expr("?", offset)).(SelectBuilder)
 }
 

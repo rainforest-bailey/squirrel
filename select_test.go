@@ -51,11 +51,11 @@ func TestSelectBuilderToSql(t *testing.T) {
 			"FROM e " +
 			"CROSS JOIN j1 JOIN j2 LEFT JOIN j3 RIGHT JOIN j4 INNER JOIN j5 CROSS JOIN j6 " +
 			"WHERE f = ? AND g = ? AND h = ? AND i IN (?,?,?) AND (j = ? OR (k = ? AND true)) " +
-			"GROUP BY l HAVING m = n ORDER BY ? DESC, o ASC, p DESC LIMIT ? OFFSET ? " +
+			"GROUP BY l HAVING m = n ORDER BY ? DESC, o ASC, p DESC LIMIT 12 OFFSET 13 " +
 			"FETCH FIRST ? ROWS ONLY"
 	assert.Equal(t, expectedSql, sql)
 
-	expectedArgs := []interface{}{0, 1, 2, 3, 100, 101, 102, 103, 4, 5, 6, 7, 8, 9, 10, 11, 1, uint64(12), uint64(13), 14}
+	expectedArgs := []interface{}{0, 1, 2, 3, 100, 101, 102, 103, 4, 5, 6, 7, 8, 9, 10, 11, 1, 14}
 	assert.Equal(t, expectedArgs, args)
 }
 
@@ -195,10 +195,19 @@ func TestSelectWithOptions(t *testing.T) {
 	assert.Equal(t, "SELECT DISTINCT SQL_NO_CACHE * FROM foo", sql)
 }
 
-func TestSelectLimitOffsetBound(t *testing.T) {
+func TestSelectLimitOffsetLiteral(t *testing.T) {
+	sql, args, err := Select("id").From("foo").Where(Eq{"kind": "A"}).
+		Limit(10).Offset(300).PlaceholderFormat(Dollar).ToSql()
+
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT id FROM foo WHERE kind = $1 LIMIT 10 OFFSET 300", sql)
+	assert.Equal(t, []interface{}{"A"}, args)
+}
+
+func TestSelectLimitOffsetParam(t *testing.T) {
 	build := func(limit, offset uint64) (string, []interface{}) {
 		sql, args, err := Select("id").From("foo").Where(Eq{"kind": "A"}).
-			Limit(limit).Offset(offset).PlaceholderFormat(Dollar).ToSql()
+			LimitParam(limit).OffsetParam(offset).PlaceholderFormat(Dollar).ToSql()
 		assert.NoError(t, err)
 		return sql, args
 	}
@@ -212,8 +221,8 @@ func TestSelectLimitOffsetBound(t *testing.T) {
 	assert.Equal(t, []interface{}{"A", uint64(25), uint64(300)}, argsB)
 }
 
-func TestSelectLimitOffsetBoundInSubquery(t *testing.T) {
-	subquery := Select("id").From("foo").Where(Eq{"kind": "A"}).Limit(10).Offset(20)
+func TestSelectLimitOffsetParamInSubquery(t *testing.T) {
+	subquery := Select("id").From("foo").Where(Eq{"kind": "A"}).LimitParam(10).OffsetParam(20)
 	sql, args, err := Select("*").
 		FromSelect(subquery, "sub").
 		Where(Eq{"sub.id": 5}).
@@ -222,8 +231,24 @@ func TestSelectLimitOffsetBoundInSubquery(t *testing.T) {
 		ToSql()
 
 	assert.NoError(t, err)
-	assert.Equal(t, "SELECT * FROM (SELECT id FROM foo WHERE kind = $1 LIMIT $2 OFFSET $3) AS sub WHERE sub.id = $4 LIMIT $5", sql)
-	assert.Equal(t, []interface{}{"A", uint64(10), uint64(20), 5, uint64(1)}, args)
+	assert.Equal(t, "SELECT * FROM (SELECT id FROM foo WHERE kind = $1 LIMIT $2 OFFSET $3) AS sub WHERE sub.id = $4 LIMIT 1", sql)
+	assert.Equal(t, []interface{}{"A", uint64(10), uint64(20), 5}, args)
+}
+
+func TestSelectLimitOffsetLastCallWins(t *testing.T) {
+	sql, args, err := Select("*").From("foo").LimitParam(10).Limit(5).Offset(3).OffsetParam(7).ToSql()
+
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT * FROM foo LIMIT 5 OFFSET ?", sql)
+	assert.Equal(t, []interface{}{uint64(7)}, args)
+}
+
+func TestSelectWithRemoveLimitParam(t *testing.T) {
+	sql, args, err := Select("*").From("foo").LimitParam(10).RemoveLimit().OffsetParam(5).RemoveOffset().ToSql()
+
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT * FROM foo", sql)
+	assert.Empty(t, args)
 }
 
 func TestSelectWithRemoveLimit(t *testing.T) {
